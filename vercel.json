@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm install",
-  "buildCommand": "npm run build --workspace frontend",
+  "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.js": {
