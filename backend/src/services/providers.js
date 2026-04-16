@@ -22,6 +22,20 @@ const USER_AGENTS = [
 
 const pickUserAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
+async function fetchTextSearchWithRetry(params) {
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await googleClient.get("/textsearch/json", { params });
+      return response.data;
+    } catch {
+      if (attempt === maxAttempts) return null;
+      await sleep(700 * attempt);
+    }
+  }
+  return null;
+}
+
 export async function searchGooglePlaces({ niche, state }) {
   if (!env.googlePlacesApiKey) return [];
 
@@ -40,7 +54,11 @@ export async function searchGooglePlaces({ niche, state }) {
       await sleep(2200);
     }
 
-    const { data } = await googleClient.get("/textsearch/json", { params });
+    const data = await fetchTextSearchWithRetry(params);
+    if (!data) {
+      // Skip this combo page when Google keeps timing out; continue other combos.
+      break;
+    }
     const places = data.results || [];
 
     const placeRecords = await Promise.all(
