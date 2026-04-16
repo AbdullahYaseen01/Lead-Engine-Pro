@@ -13,6 +13,6 @@ export const env = {
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || "",
   serpApiKey: process.env.SERPAPI_API_KEY || "",
   hunterApiKey: process.env.HUNTER_API_KEY || "",
-  maxGoogleQps: Number(process.env.MAX_GOOGLE_QPS || 10),
-  websiteCrawlDelayMs: Number(process.env.WEBSITE_CRAWL_DELAY_MS || 1250)
+  maxGoogleQps: Number(process.env.MAX_GOOGLE_QPS || 20),
+  websiteCrawlDelayMs: Number(process.env.WEBSITE_CRAWL_DELAY_MS || 250)
 };

@@ -36,10 +36,17 @@ export default function App() {
       try {
         const next = await getJobStatus(jobId);
         setStatus(next);
-      } catch {
-        // no-op
+      } catch (error) {
+        if (error?.status === 404) {
+          setStatus({
+            status: "failed",
+            progress: 100,
+            leadCount: 0,
+            statusText: "Session expired on server. Please click Generate Leads again."
+          });
+        }
       }
-    }, 2000);
+    }, 2500);
 
     return () => clearInterval(timer);
   }, [jobId, status]);
@@ -242,6 +249,13 @@ export default function App() {
                 {didDownload && (
                   <p className="mt-3 text-sm text-emerald-300">CSV downloaded successfully</p>
                 )}
+              </div>
+            )}
+
+            {jobId && status?.status === "failed" && (
+              <div className="max-w-[560px]">
+                <p className="text-lg font-semibold text-pink-300">Lead generation failed</p>
+                <p className="mt-2 text-sm text-slate-300">{status.statusText || "Please try again."}</p>
               </div>
             )}
           </div>

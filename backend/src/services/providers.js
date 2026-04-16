@@ -11,7 +11,7 @@ const googleClient = axios.create({
 const detailsQueue = new PQueue({
   intervalCap: env.maxGoogleQps,
   interval: 1000,
-  concurrency: 6
+  concurrency: 20
 });
 
 const USER_AGENTS = [

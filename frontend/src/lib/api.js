@@ -13,7 +13,11 @@ export async function generateLeads(payload) {
 
 export async function getJobStatus(jobId) {
   const res = await fetch(`${API_BASE}/status/${jobId}`);
-  if (!res.ok) throw new Error("Failed to fetch status");
+  if (!res.ok) {
+    const error = new Error("Failed to fetch status");
+    error.status = res.status;
+    throw error;
+  }
   return res.json();
 }
 

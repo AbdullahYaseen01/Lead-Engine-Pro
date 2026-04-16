@@ -7,11 +7,11 @@ import { discoverEmailForBusiness, searchGooglePlaces } from "./providers.js";
 const googleQueue = new PQueue({
   intervalCap: env.maxGoogleQps,
   interval: 1000,
-  concurrency: 3
+  concurrency: 20
 });
 
-const crawlerQueue = new PQueue({ concurrency: 6 });
-const comboQueue = new PQueue({ concurrency: 3 });
+const crawlerQueue = new PQueue({ concurrency: 50 });
+const comboQueue = new PQueue({ concurrency: 8 });
 
 const nowIso = () => new Date().toISOString();
 const jobs = new Map();
