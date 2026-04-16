@@ -1,5 +1,4 @@
 import axios from "axios";
-import randomUseragent from "random-useragent";
 import PQueue from "p-queue";
 import { env } from "../config/env.js";
 import { extractEmails, normalizeWebsite, sleep } from "../utils/helpers.js";
@@ -14,6 +13,14 @@ const detailsQueue = new PQueue({
   interval: 1000,
   concurrency: 6
 });
+
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+];
+
+const pickUserAgent = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
 export async function searchGooglePlaces({ niche, state }) {
   if (!env.googlePlacesApiKey) return [];
@@ -80,7 +87,7 @@ async function crawlWebsiteForEmail(website) {
       const { data } = await axios.get(target, {
         timeout: 12000,
         headers: {
-          "User-Agent": randomUseragent.getRandom() || "Mozilla/5.0"
+          "User-Agent": pickUserAgent()
         }
       });
       const emails = extractEmails(typeof data === "string" ? data : "");
