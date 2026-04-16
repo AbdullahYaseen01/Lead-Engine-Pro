@@ -1,5 +1,6 @@
 const API_BASE =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || `${window.location.origin}/api/leads`;
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
+  "https://lead-engine-pro-backend-wt8z.vercel.app/api/leads";
 
 export async function generateLeads(payload) {
   const res = await fetch(`${API_BASE}/generate`, {
