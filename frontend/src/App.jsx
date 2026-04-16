@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { generateLeads, getExportUrl, getJobStatus } from "./lib/api";
+import { generateLeads } from "./lib/api";
 import { NICHES_BY_GROUP, STATES } from "./lib/constants";
 
 const STORAGE_KEY = "leadgen:last-state";
@@ -17,7 +17,6 @@ export default function App() {
   const [selectedStates, setSelectedStates] = useState(persisted.selectedStates || []);
   const [selectedNiches, setSelectedNiches] = useState(persisted.selectedNiches || []);
   const [nicheSearch, setNicheSearch] = useState("");
-  const [jobId, setJobId] = useState(persisted.jobId || "");
   const [status, setStatus] = useState(persisted.status || null);
   const [isLoading, setIsLoading] = useState(false);
   const [targetLeads, setTargetLeads] = useState(persisted.targetLeads || 300);
@@ -26,43 +25,48 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ selectedStates, selectedNiches, jobId, status, targetLeads })
+      JSON.stringify({ selectedStates, selectedNiches, status, targetLeads })
     );
-  }, [selectedStates, selectedNiches, jobId, status, targetLeads]);
-
-  useEffect(() => {
-    if (!jobId || !status || (status.status !== "running" && status.status !== "queued")) return;
-    const timer = setInterval(async () => {
-      try {
-        const next = await getJobStatus(jobId);
-        setStatus(next);
-      } catch (error) {
-        if (error?.status === 404) {
-          setStatus({
-            status: "failed",
-            progress: 100,
-            leadCount: 0,
-            statusText: "Session expired on server. Please click Generate Leads again."
-          });
-        }
-      }
-    }, 2500);
-
-    return () => clearInterval(timer);
-  }, [jobId, status]);
+  }, [selectedStates, selectedNiches, status, targetLeads]);
 
   async function onGenerate() {
     if (selectedStates.length === 0 || selectedNiches.length === 0) return;
     setIsLoading(true);
     try {
-      const created = await generateLeads({
+      setStatus({
+        status: "running",
+        progress: 55,
+        leadCount: 0,
+        statusText: "Generating leads and preparing CSV download..."
+      });
+      const blob = await generateLeads({
         niches: selectedNiches,
         states: selectedStates,
         targetLeads
       });
-      setJobId(created.jobId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "leads.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
       setDidDownload(false);
-      setStatus({ status: "queued", progress: 0, statusText: "Queued" });
+      setStatus({
+        status: "completed",
+        progress: 100,
+        leadCount: targetLeads,
+        statusText: "Completed. CSV downloaded."
+      });
+      setDidDownload(true);
+    } catch (error) {
+      setStatus({
+        status: "failed",
+        progress: 100,
+        leadCount: 0,
+        statusText: error.message || "Lead generation failed."
+      });
     } finally {
       setIsLoading(false);
     }
@@ -174,22 +178,12 @@ export default function App() {
                 type="button"
                 className="rounded-xl border border-cyan-400/45 bg-slate-900/40 px-4 py-2 text-sm text-slate-100 transition duration-150 hover:shadow-[0_0_18px_rgba(0,245,255,0.2)]"
                 onClick={() => {
-                  setJobId("");
                   setStatus(null);
                   setDidDownload(false);
                 }}
               >
                 Clear Results
               </button>
-              {jobId && status?.status === "completed" && (
-                <a
-                  className="rounded-xl border border-violet-400/50 bg-slate-900/40 px-4 py-2 text-sm text-slate-100 transition duration-150 hover:shadow-[0_0_20px_rgba(139,92,246,0.35)]"
-                  href={getExportUrl(jobId)}
-                  onClick={() => setDidDownload(true)}
-                >
-                  Export CSV
-                </a>
-              )}
             </div>
 
             <div className="flex items-center justify-between">
@@ -217,42 +211,35 @@ export default function App() {
           </div>
 
           <div className="glass-card table-anim flex min-h-[440px] items-center justify-center rounded-2xl p-8 text-center">
-            {!jobId && (
+            {!status && (
               <p className="max-w-[560px] text-lg text-slate-300">
                 Select your states and niches, set your target, and click Generate Leads
               </p>
             )}
 
-            {jobId && status?.status === "running" && (
+            {status?.status === "running" && (
               <div>
                 <p className="text-xl font-semibold text-cyan-200">Generating leads...</p>
                 <p className="mt-2 text-sm text-slate-400">
-                  {status.leadCount || 0} / {targetLeads} leads found
+                  This can take a little while for larger searches.
                 </p>
               </div>
             )}
 
-            {jobId && status?.status === "completed" && (
+            {status?.status === "completed" && (
               <div className="max-w-[560px]">
                 <div className="text-6xl text-cyan-300">✓</div>
                 <h2 className="mt-3 text-3xl font-extrabold text-white">Your leads are ready!</h2>
                 <p className="mt-2 text-slate-300">
                   {status.leadCount || 0} leads collected across {selectedNiches.length} niches and {selectedStates.length} states
                 </p>
-                <a
-                  className="mt-6 inline-block rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 px-8 py-3 text-lg font-bold text-slate-950 shadow-[0_0_26px_rgba(139,92,246,0.45)] transition hover:scale-[1.03]"
-                  href={getExportUrl(jobId)}
-                  onClick={() => setDidDownload(true)}
-                >
-                  Download CSV
-                </a>
                 {didDownload && (
                   <p className="mt-3 text-sm text-emerald-300">CSV downloaded successfully</p>
                 )}
               </div>
             )}
 
-            {jobId && status?.status === "failed" && (
+            {status?.status === "failed" && (
               <div className="max-w-[560px]">
                 <p className="text-lg font-semibold text-pink-300">Lead generation failed</p>
                 <p className="mt-2 text-sm text-slate-300">{status.statusText || "Please try again."}</p>
