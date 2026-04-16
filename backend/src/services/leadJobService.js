@@ -41,7 +41,10 @@ export async function generateLeadRows({ states, niches, targetLeads = 200 }) {
               if (stopRequested) return;
               const email = await discoverEmailForBusiness(business);
               if (stopRequested) return;
-              collected.push({ ...business, email: email || "" });
+              if (!email) {
+                return;
+              }
+              collected.push({ ...business, email });
               if (collected.length >= targetLeads) {
                 stopRequested = true;
               }
