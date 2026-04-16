@@ -1,4 +1,3 @@
-module.exports = async (req, res) => {
-  const { default: app } = await import("../src/app.js");
-  return app(req, res);
-};
+import app from "../src/app.js";
+
+export default app;
