@@ -14,11 +14,12 @@ router.post("/generate", async (req, res) => {
   const csvRows = records.map((row) => ({
     "Business Name": row.businessName || "",
     Email: row.email || "",
+    Phone: row.phoneNumber || "",
     "Website Link": row.websiteLink || "",
     Category: row.category || ""
   }));
   const csv = Papa.unparse(csvRows, {
-    columns: ["Business Name", "Email", "Website Link", "Category"]
+    columns: ["Business Name", "Email", "Phone", "Website Link", "Category"]
   });
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", 'attachment; filename="leads.csv"');

@@ -65,16 +65,19 @@ export async function searchGooglePlaces({ niche, state }) {
       places.map((place) =>
         detailsQueue.add(async () => {
           let website = "";
+          let phoneNumber = "";
           if (place.place_id) {
             try {
               const detailRes = await googleClient.get("/details/json", {
                 params: {
                   key: env.googlePlacesApiKey,
                   place_id: place.place_id,
-                  fields: "name,website"
+                  fields: "name,website,formatted_phone_number"
                 }
               });
-              website = detailRes.data?.result?.website || "";
+              const result = detailRes.data?.result;
+              website = result?.website || "";
+              phoneNumber = result?.formatted_phone_number || "";
             } catch {
               website = "";
             }
@@ -82,6 +85,7 @@ export async function searchGooglePlaces({ niche, state }) {
           return {
             businessName: place.name || "",
             websiteLink: normalizeWebsite(website),
+            phoneNumber,
             category: niche,
             state
           };
