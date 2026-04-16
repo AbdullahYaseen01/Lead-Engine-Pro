@@ -1,21 +1,37 @@
 import express from "express";
 import Papa from "papaparse";
-import { consumeJobLeads, createLeadJob, getJobStatus } from "../services/leadJobService.js";
+import { waitUntil } from "@vercel/functions";
+import {
+  consumeJobLeads,
+  createLeadJob,
+  failLeadJob,
+  getJobStatus,
+  runLeadJob
+} from "../services/leadJobService.js";
 
 const router = express.Router();
 
-router.post("/generate", (req, res) => {
+router.post("/generate", async (req, res) => {
   const { niches = [], states = [], targetLeads = 200 } = req.body || {};
   if (!Array.isArray(niches) || !Array.isArray(states)) {
     return res.status(400).json({ error: "niches and states must be arrays" });
   }
   const parsedTarget = Math.max(10, Math.min(Number(targetLeads) || 200, 5000));
-  const jobId = createLeadJob({ niches, states, targetLeads: parsedTarget });
+  const jobId = await createLeadJob({ niches, states, targetLeads: parsedTarget });
+  const totalCombinations = niches.length * states.length;
+  const task = runLeadJob(jobId, states, niches, parsedTarget).catch((error) =>
+    failLeadJob(jobId, totalCombinations, error.message)
+  );
+  try {
+    waitUntil(task);
+  } catch {
+    task.catch(() => {});
+  }
   return res.status(202).json({ jobId });
 });
 
-router.get("/status/:jobId", (req, res) => {
-  const row = getJobStatus(req.params.jobId);
+router.get("/status/:jobId", async (req, res) => {
+  const row = await getJobStatus(req.params.jobId);
   if (!row) return res.status(404).json({ error: "Job not found" });
 
   return res.json({
@@ -33,8 +49,8 @@ router.get("/status/:jobId", (req, res) => {
   });
 });
 
-router.get("/export/:jobId", (req, res) => {
-  const records = consumeJobLeads(req.params.jobId);
+router.get("/export/:jobId", async (req, res) => {
+  const records = await consumeJobLeads(req.params.jobId);
   if (!records.length) {
     return res.status(404).json({ error: "No leads ready for this job." });
   }

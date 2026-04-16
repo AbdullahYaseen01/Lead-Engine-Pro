@@ -11,7 +11,7 @@ Production-ready full-stack lead generation dashboard for home service businesse
 ## Stack
 - Frontend: React + Tailwind CSS
 - Backend: Node.js + Express
-- Data flow: in-memory per-job leads (CSV-first export)
+- Data flow: persistent per-job leads via Vercel KV/Upstash Redis with memory fallback for local dev
 - Queueing/rate limiting: `p-queue`
 - CSV export: Papa Parse
 
@@ -41,6 +41,8 @@ Set these environment variables in Vercel Project Settings:
 - `HUNTER_API_KEY` (optional)
 - `MAX_GOOGLE_QPS` (optional)
 - `WEBSITE_CRAWL_DELAY_MS` (optional)
+- `KV_REST_API_URL` (required for stable serverless job status)
+- `KV_REST_API_TOKEN` (required for stable serverless job status)
 
 Optional:
 - `FRONTEND_ORIGIN` (if you want strict CORS origin pinning)

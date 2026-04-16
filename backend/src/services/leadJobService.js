@@ -3,6 +3,7 @@ import PQueue from "p-queue";
 import { env } from "../config/env.js";
 import { dedupeByNameAndWebsite } from "../utils/helpers.js";
 import { discoverEmailForBusiness, searchGooglePlaces } from "./providers.js";
+import { consumeJobLeads as consumeStoredJobLeads, getJob, saveJob, saveJobLeads } from "./jobStore.js";
 
 const googleQueue = new PQueue({
   intervalCap: env.maxGoogleQps,
@@ -14,10 +15,8 @@ const crawlerQueue = new PQueue({ concurrency: 50 });
 const comboQueue = new PQueue({ concurrency: 8 });
 
 const nowIso = () => new Date().toISOString();
-const jobs = new Map();
-const jobLeads = new Map();
 
-function upsertJobProgress(
+async function upsertJobProgress(
   jobId,
   status,
   progress,
@@ -27,9 +26,9 @@ function upsertJobProgress(
   leadCount = 0,
   meta = {}
 ) {
-  const current = jobs.get(jobId);
+  const current = await getJob(jobId);
   if (!current) return;
-  jobs.set(jobId, {
+  await saveJob({
     ...current,
     status,
     progress,
@@ -42,17 +41,15 @@ function upsertJobProgress(
   });
 }
 
-export function getJobStatus(jobId) {
-  return jobs.get(jobId) || null;
+export async function getJobStatus(jobId) {
+  return getJob(jobId);
 }
 
-export function consumeJobLeads(jobId) {
-  const leads = jobLeads.get(jobId) || [];
-  jobLeads.delete(jobId);
-  return leads;
+export async function consumeJobLeads(jobId) {
+  return consumeStoredJobLeads(jobId);
 }
 
-export function createLeadJob({ states, niches, targetLeads = 200 }) {
+export async function createLeadJob({ states, niches, targetLeads = 200 }) {
   const jobId = crypto.randomUUID();
   const combinations = [];
   for (const state of states) {
@@ -61,7 +58,7 @@ export function createLeadJob({ states, niches, targetLeads = 200 }) {
     }
   }
 
-  jobs.set(jobId, {
+  await saveJob({
     id: jobId,
     status: "queued",
     progress: 0,
@@ -75,23 +72,26 @@ export function createLeadJob({ states, niches, targetLeads = 200 }) {
     createdAt: nowIso(),
     updatedAt: nowIso()
   });
-  jobLeads.set(jobId, []);
-
-  runJob(jobId, combinations, targetLeads).catch((error) => {
-    upsertJobProgress(jobId, "failed", 100, 0, combinations.length, `Failed: ${error.message}`);
-  });
+  await saveJobLeads(jobId, []);
 
   return jobId;
 }
 
-async function runJob(jobId, combinations, targetLeads) {
+export async function runLeadJob(jobId, states, niches, targetLeads) {
+  const combinations = [];
+  for (const state of states) {
+    for (const niche of niches) {
+      combinations.push({ state, niche });
+    }
+  }
+
   if (combinations.length === 0) {
-    upsertJobProgress(jobId, "completed", 100, 0, 0, "No combinations selected.");
+    await upsertJobProgress(jobId, "completed", 100, 0, 0, "No combinations selected.");
     return;
   }
 
   let completed = 0;
-  upsertJobProgress(jobId, "running", 1, completed, combinations.length, "Starting lead generation...", 0);
+  await upsertJobProgress(jobId, "running", 1, completed, combinations.length, "Starting lead generation...", 0);
   const collected = [];
   let stopRequested = false;
 
@@ -101,7 +101,7 @@ async function runJob(jobId, combinations, targetLeads) {
         if (stopRequested) return;
 
         const statusText = `Searching ${combo.state} ${combo.niche}...`;
-        upsertJobProgress(
+        await upsertJobProgress(
           jobId,
           "running",
           Math.round((completed / combinations.length) * 100),
@@ -134,7 +134,7 @@ async function runJob(jobId, combinations, targetLeads) {
         );
 
         completed += 1;
-        upsertJobProgress(
+        await upsertJobProgress(
           jobId,
           "running",
           Math.round((completed / combinations.length) * 100),
@@ -148,9 +148,9 @@ async function runJob(jobId, combinations, targetLeads) {
   );
 
   const deduped = dedupeByNameAndWebsite(collected).slice(0, targetLeads);
-  jobLeads.set(jobId, deduped);
+  await saveJobLeads(jobId, deduped);
 
-  upsertJobProgress(
+  await upsertJobProgress(
     jobId,
     "completed",
     100,
@@ -159,4 +159,8 @@ async function runJob(jobId, combinations, targetLeads) {
     `Completed. ${deduped.length} leads found.`,
     deduped.length
   );
+}
+
+export async function failLeadJob(jobId, totalCombinations, errorMessage) {
+  await upsertJobProgress(jobId, "failed", 100, 0, totalCombinations, `Failed: ${errorMessage}`);
 }
