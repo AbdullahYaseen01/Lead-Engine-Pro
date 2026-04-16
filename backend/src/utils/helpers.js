@@ -21,3 +21,19 @@ export const dedupeByNameAndWebsite = (records) => {
   }
   return [...map.values()];
 };
+
+/** US leads: ensure CSV shows country code +1 before the formatted national number. */
+export function formatPhoneWithUsCountryCode(phone) {
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  const s = raw.replace(/\s+/g, " ");
+  if (/^\+1(\s|\(|-|$)/i.test(s)) {
+    const rest = s.replace(/^\+1\s*/i, "").trim();
+    return rest ? `+1 ${rest}` : "+1";
+  }
+  if (/^1(\s|\(|-)/.test(s)) {
+    const rest = s.replace(/^1\s*/, "").trim();
+    return rest ? `+1 ${rest}` : "+1";
+  }
+  return `+1 ${s}`;
+}

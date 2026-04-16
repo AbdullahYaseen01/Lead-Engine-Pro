@@ -1,5 +1,6 @@
 import express from "express";
 import Papa from "papaparse";
+import { formatPhoneWithUsCountryCode } from "../utils/helpers.js";
 import { generateLeadRows } from "../services/leadJobService.js";
 
 const router = express.Router();
@@ -14,7 +15,7 @@ router.post("/generate", async (req, res) => {
   const csvRows = records.map((row) => ({
     "Business Name": row.businessName || "",
     Email: row.email || "",
-    Phone: row.phoneNumber || "",
+    Phone: formatPhoneWithUsCountryCode(row.phoneNumber),
     "Website Link": row.websiteLink || "",
     Category: row.category || ""
   }));
